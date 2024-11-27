@@ -1,7 +1,17 @@
 import tensorflow as tf
+from sklearn.metrics import (
+    roc_auc_score,
+    f1_score,
+    multilabel_confusion_matrix,
+    classification_report,
+)
+import matplotlib.pyplot as plt
+from config import PLOT_PATH
+import seaborn as sns
+import os
 
 
-def custom_evaluation(y_true, y_pred, threshold=0.5):
+def custom_accuracy(y_true, y_pred, threshold=0.5):
     """
     Custom evaluation function for ODIR dataset:
     1. Evaluates normal/abnormal classification accuracy.
@@ -23,11 +33,8 @@ def custom_evaluation(y_true, y_pred, threshold=0.5):
     normal_true = tf.cast(y_true[:, 0], tf.float32)  # Ground truth for normal/abnormal
     multilabel_true = tf.cast(y_true[:, 1:], tf.float32)  # Ground truth for diseases
 
-    normal_pred = y_pred[0]  # Predicted normal/abnormal probabilities
-
-    multilabel_pred = y_pred[1]  # Predicted disease probabilities
-    overall_pred = tf.concat([normal_pred, multilabel_pred], axis=-1)
-
+    normal_pred = y_pred[:, 0]
+    multilabel_pred = y_pred[:, 1:]
     # Threshold predictions
     normal_pred_binary = tf.cast(
         normal_pred > threshold, tf.float32
@@ -35,7 +42,7 @@ def custom_evaluation(y_true, y_pred, threshold=0.5):
     multilabel_pred_binary = tf.cast(
         multilabel_pred > threshold, tf.float32
     )  # Binary: presence of diseases
-    overall_pred_binary = tf.cast(overall_pred > threshold, tf.float32)
+    overall_pred_binary = tf.cast(y_pred > threshold, tf.float32)
     # Evaluate normal/abnormal accuracy
     normal_accuracy = tf.reduce_mean(
         tf.cast(tf.equal(normal_true, normal_pred_binary), tf.float32)
@@ -93,3 +100,37 @@ def custom_evaluation(y_true, y_pred, threshold=0.5):
         overall_accuracy.numpy(),
         overall_label_wise_accuracy.numpy(),
     )
+
+
+def f_1_score(y_true, y_pred, threshold=0.5):
+    y_pred = (y_pred >= threshold).astype(int)
+    f1 = f1_score(y_true, y_pred, average="macro")
+    return f1
+
+
+def auc_roc(y_true, y_pred):
+    roc_auc = roc_auc_score(y_true, y_pred, average="macro", multi_class="ovr")
+    return roc_auc
+
+
+def plot_confusion_matrix(
+    y_true,
+    y_pred,
+    threshold=0.5,
+    epoch=0,
+):
+    y_pred = (y_pred >= threshold).astype(int)
+    conf_matrices = multilabel_confusion_matrix(y_true, y_pred)
+    # Plot each confusion matrix as a heatmap
+    num_labels = conf_matrices.shape[0]
+    fig, axes = plt.subplots(1, num_labels, figsize=(20, 8))
+
+    for i, matrix in enumerate(conf_matrices):
+        sns.heatmap(matrix, annot=True, fmt="d", cmap="Blues", cbar=False, ax=axes[i])
+        axes[i].set_title(f"Label {i}")
+        axes[i].set_xlabel("Predicted")
+        axes[i].set_ylabel("True")
+
+    # Adjust layout and save as an image
+    plt.tight_layout()
+    plt.savefig(os.path.join(PLOT_PATH, f"confusion_matrix_{epoch}.png"))

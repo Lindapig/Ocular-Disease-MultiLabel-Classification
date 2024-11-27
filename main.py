@@ -12,12 +12,13 @@ setup_logging(folder_path=LOG_PATH)
 logger = logging.getLogger(__name__)
 
 
-batch_size = 16
-num_epoch = 10
-image_size = (512, 512)
+batch_size = 32
+num_epoch = 60
+image_size = (256, 256)
 test_set_ratio = 0.2
 random_seed = 99
 learning_rate = 0.0001
+rho = 3
 save_model_path = SAVED_MODEL_PATH
 
 
@@ -28,22 +29,25 @@ logger.info(f"Test set ratio is {test_set_ratio}")
 logger.info(f"Random seed is {random_seed}")
 logger.info(f"Model will be saved to {save_model_path}")
 logger.info(f"Learning rate {learning_rate}")
+logger.info(f"rho is {rho}")
 train_dataset, test_dataset = create_datasets(
+    image_size=image_size,
     batch_size=batch_size,
     test_set_ratio=test_set_ratio,
     random_seed=random_seed,
 )
 
-model = MyInceptionV3(
-    image_size=image_size, num_classes=8
-)  # the num_classes includes normal
-# model = MySimpleModel(num_classes=8)
+# model = MyInceptionV3(
+#     image_size=image_size, num_classes=8
+# )  # the num_classes includes normal
+model = MySimpleModel(num_classes=8)
 model = train_two_stage_model(
     model,
     train_dataset,
     test_dataset,
     learning_rate=learning_rate,
     epochs=num_epoch,
+    rho=rho,
     save_model_path=save_model_path,
 )
 logger.info(f"running time is {time.time()-start_time}")

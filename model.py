@@ -9,14 +9,12 @@ logger = logging.getLogger(__name__)
 class MyInceptionV3(Model):
     def __init__(self, image_size=(512, 512), num_classes=8):
         super(MyInceptionV3, self).__init__()
-        self.channel_from_6_to_3 = layers.Conv2D(
-            3, (3, 3), activation=None, padding="same"
-        )
+
         self.inception_v3 = InceptionV3(
             weights="imagenet",
             include_top=False,
             input_shape=image_size + (3,),
-            classes=100,
+            classes=1000,
             classifier_activation=None,
         )
         self.flatten = layers.Flatten()
@@ -30,10 +28,12 @@ class MyInceptionV3(Model):
         )
 
     def call(self, inputs):
-        x = self.channel_from_6_to_3(inputs)
+        left_x = self.inception_v3(inputs[:, :, :, :3])
+        right_x = self.inception_v3(inputs[:, :, :, 3:])
         # Shared backbone computation
-        x = self.inception_v3(x)
-        x = self.flatten(x)
+        left_x = self.flatten(left_x)
+        right_x = self.flatten(right_x)
+        x = tf.concat([left_x, right_x], axis=-1)
         features = self.dense_shared(x)
         # Stage 1: Normal-Abnormal Classification
         normal_abnormal = self.normal_abnormal_output(features)

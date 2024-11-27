@@ -1,8 +1,10 @@
 import tensorflow as tf
 from loss import custom_loss
-from metrics import custom_evaluation
-import logging
+from metrics import custom_accuracy, f_1_score, auc_roc, plot_confusion_matrix
+
 import os
+import numpy as np
+import logging
 
 logger = logging.getLogger(__name__)
 
@@ -13,6 +15,7 @@ def train_two_stage_model(
     test_dataset,
     learning_rate=0.001,
     epochs=10,
+    rho=3,
     save_model_path=None,
 ):
     optimizer = tf.keras.optimizers.Adam(
@@ -20,7 +23,7 @@ def train_two_stage_model(
     )
     for epoch in range(epochs):
         print(f"Epoch {epoch+1}/{epochs}")
-        logger.info("Epoch is %s", str((epoch + 1) / epochs))
+        logger.info("Epoch is %s", str((epoch + 1)) + "/" + str(epochs))
         train_loss = 0.0
         batch_count = 0
 
@@ -28,7 +31,7 @@ def train_two_stage_model(
         for images, labels in train_dataset:
             with tf.GradientTape() as tape:
                 normal_pred, multilabel_pred = model(images, training=True)
-                loss = custom_loss(labels, [normal_pred, multilabel_pred])
+                loss = custom_loss(labels, [normal_pred, multilabel_pred], rho=rho)
             gradients = tape.gradient(loss, model.trainable_variables)
             optimizer.apply_gradients(zip(gradients, model.trainable_variables))
             train_loss += loss.numpy()
@@ -39,33 +42,34 @@ def train_two_stage_model(
         logger.info("training loss is %s", str(train_loss))
         # Evaluation loop
         test_loss = 0.0
-        test_normal_accuracy = 0.0
-        test_multilabel_accuracy = 0.0
-        test_overall_accuracy = 0.0
-        test_overall_label_wise_accuracy = 0.0
         batch_count = 0
+
+        y_true_list = []
+        y_pred_probs_list = []
         for images, labels in test_dataset:
             normal_pred, multilabel_pred = model(images, training=False)
-            loss = custom_loss(labels, [normal_pred, multilabel_pred])
+            loss = custom_loss(labels, [normal_pred, multilabel_pred], rho=rho)
             test_loss += loss.numpy()
-            (
-                normal_accuracy,
-                multilabel_accuracy,
-                overall_accuracy,
-                overall_label_wise_accuracy,
-            ) = custom_evaluation(labels, [normal_pred, multilabel_pred])
-            test_normal_accuracy += normal_accuracy
-            test_multilabel_accuracy += multilabel_accuracy
-            test_overall_accuracy += overall_accuracy
-            test_overall_label_wise_accuracy += overall_label_wise_accuracy
             batch_count += 1
+            y_true_list.append(labels.numpy())
+            y_pred_probs_tmp = tf.concat([normal_pred, multilabel_pred], axis=-1)
+            y_pred_probs_list.append(y_pred_probs_tmp.numpy())
 
         test_loss /= batch_count
-        test_normal_accuracy /= batch_count
-        test_multilabel_accuracy /= batch_count
-        test_overall_accuracy /= batch_count
-        test_overall_label_wise_accuracy /= batch_count
 
+        y_true = np.concatenate(y_true_list, axis=0)
+        y_pred_probs = np.concatenate(y_pred_probs_list, axis=0)
+
+        (
+            test_normal_accuracy,
+            test_multilabel_accuracy,
+            test_overall_accuracy,
+            test_overall_label_wise_accuracy,
+        ) = custom_accuracy(y_true, y_pred_probs, threshold=0.5)
+        if epoch % 10 == 0 and epoch != 0:
+            plot_confusion_matrix(y_true, y_pred_probs, threshold=0.5, epoch=epoch)
+        f_1 = f_1_score(y_true, y_pred_probs, threshold=0.5)
+        ac = auc_roc(y_true, y_pred_probs)
         print(
             f"Validation Loss: {test_loss:.4f}, Validation Accuracy: {test_overall_accuracy * 100:.2f}%"
         )
@@ -77,6 +81,17 @@ def train_two_stage_model(
             "test_overall_label_wise_accuracy is %s",
             str(test_overall_label_wise_accuracy),
         )
+        logger.info(
+            "F 1 score is %s",
+            str(f_1),
+        )
+        logger.info(
+            "AUC ROC is %s",
+            str(ac),
+        )
         if save_model_path:
-            model.save(os.path.join(save_model_path, "my_model"))
+            if epoch % 5 == 0 and epoch != 0:
+                model.save(
+                    os.path.join(save_model_path, f"{model.__class__.__name__}_{epoch}")
+                )
     return model
