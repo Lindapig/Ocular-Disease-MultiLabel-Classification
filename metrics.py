@@ -32,7 +32,6 @@ def custom_accuracy(y_true, y_pred, threshold=0.5):
     y_true = tf.cast(y_true, tf.float32)
     normal_true = tf.cast(y_true[:, 0], tf.float32)  # Ground truth for normal/abnormal
     multilabel_true = tf.cast(y_true[:, 1:], tf.float32)  # Ground truth for diseases
-
     normal_pred = y_pred[:, 0]
     multilabel_pred = y_pred[:, 1:]
     # Threshold predictions
@@ -118,6 +117,7 @@ def plot_confusion_matrix(
     y_pred,
     threshold=0.5,
     epoch=0,
+    model_name="",
 ):
     y_pred = (y_pred >= threshold).astype(int)
     conf_matrices = multilabel_confusion_matrix(y_true, y_pred)
@@ -133,4 +133,4 @@ def plot_confusion_matrix(
 
     # Adjust layout and save as an image
     plt.tight_layout()
-    plt.savefig(os.path.join(PLOT_PATH, f"confusion_matrix_{epoch}.png"))
+    plt.savefig(os.path.join(PLOT_PATH, f"confusion_matrix_{epoch}_{model_name}.png"))

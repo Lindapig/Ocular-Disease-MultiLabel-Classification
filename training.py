@@ -1,7 +1,7 @@
 import tensorflow as tf
 from loss import custom_loss
 from metrics import custom_accuracy, f_1_score, auc_roc, plot_confusion_matrix
-
+from config import SAVED_MODEL_PATH
 import os
 import numpy as np
 import logging
@@ -9,14 +9,13 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def train_two_stage_model(
+def train_model(
     model,
     train_dataset,
     test_dataset,
     learning_rate=0.001,
     epochs=10,
     rho=3,
-    save_model_path=None,
 ):
     optimizer = tf.keras.optimizers.Adam(
         learning_rate=learning_rate,
@@ -67,7 +66,13 @@ def train_two_stage_model(
             test_overall_label_wise_accuracy,
         ) = custom_accuracy(y_true, y_pred_probs, threshold=0.5)
         if epoch % 10 == 0 and epoch != 0:
-            plot_confusion_matrix(y_true, y_pred_probs, threshold=0.5, epoch=epoch)
+            plot_confusion_matrix(
+                y_true,
+                y_pred_probs,
+                threshold=0.5,
+                epoch=epoch,
+                model_name=model.base_model_name,
+            )
         f_1 = f_1_score(y_true, y_pred_probs, threshold=0.5)
         ac = auc_roc(y_true, y_pred_probs)
         print(
@@ -89,9 +94,12 @@ def train_two_stage_model(
             "AUC ROC is %s",
             str(ac),
         )
-        if save_model_path:
+        if SAVED_MODEL_PATH:
             if epoch % 5 == 0 and epoch != 0:
                 model.save(
-                    os.path.join(save_model_path, f"{model.__class__.__name__}_{epoch}")
+                    os.path.join(
+                        SAVED_MODEL_PATH,
+                        f"{model.base_model_name}_{epoch}",
+                    )
                 )
     return model

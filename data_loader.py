@@ -5,9 +5,6 @@ from sklearn.model_selection import train_test_split
 from config import IMAGE_INFO, IMAGE_PATH
 import os
 from utils import read_file
-import logging
-
-logger = logging.getLogger(__name__)
 
 
 # Function to load and preprocess a single image
