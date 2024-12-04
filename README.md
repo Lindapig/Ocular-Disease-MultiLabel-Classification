@@ -55,8 +55,6 @@ Each pair of left and right fundus images is annotated with 8 labels, including 
 
 ## Usage
 
-Run main.py:
-
 chmod +x run.sh
 
 ./run.sh
