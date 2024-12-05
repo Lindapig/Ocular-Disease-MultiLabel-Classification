@@ -58,3 +58,12 @@ Each pair of left and right fundus images is annotated with 8 labels, including 
 chmod +x run.sh
 
 ./run.sh
+
+
+![image](https://github.com/user-attachments/assets/47fc604d-9b1a-46a3-a0d9-5896882cf775)
+![image](https://github.com/user-attachments/assets/4914422d-43d1-41df-a068-cc084ff7d7f8)
+![image](https://github.com/user-attachments/assets/1139de01-6959-40f1-aaed-1d785ed4bf54)
+
+
+
+
